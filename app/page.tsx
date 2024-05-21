@@ -1,113 +1,177 @@
-import Image from "next/image";
+"use client";
+import React, { lazy, useEffect, useState } from "react";
+import { tables } from "./utils";
 
-export default function Home() {
+const Table = lazy(() => import("@/app/components/Table"));
+
+const COST_PER_TABLE = 100;
+const DISCOUNTED_COST_FOR_TWO = 150;
+const DISCOUNTED_COST_FOR_THREE = 200;
+
+const calculateTotalCost = (bookedTables: (typeof tables)[0][]) => {
+  let cost = 0;
+  const count = bookedTables.length;
+
+  if (count === 2) {
+    cost = DISCOUNTED_COST_FOR_TWO;
+  } else if (count === 3) {
+    cost = DISCOUNTED_COST_FOR_THREE;
+  } else {
+    cost = count * COST_PER_TABLE;
+  }
+
+  // Add table charges
+  const tableCharges = bookedTables.reduce(
+    (total, table) => total + table.charges,
+    0
+  );
+
+  return cost + tableCharges;
+};
+
+const IndexPage = () => {
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [bookedTables, setBookedTables] = useState<(typeof tables)[0][]>([]);
+  const [totalCost, setTotalCost] = useState(0);
+
+  const handleSelectTable = (table: (typeof tables)[0]) => {
+    if (table.booked) {
+      alert("Table is already booked");
+      return;
+    }
+
+    setBookedTables((prev) => {
+      if (prev.some((t) => t.id === table.id)) {
+        return prev.filter((t) => t.id !== table.id);
+      }
+      return [...prev, table];
+    });
+  };
+
+  const handleBooking = () => {
+    alert("Tables booked successfully");
+    setBookedTables([]);
+  };
+
+  useEffect(() => {
+    const userId = localStorage.getItem("userId");
+    if (!userId) {
+      const newUserId = Math.random().toString(36).substring(2);
+      localStorage.setItem("userId", newUserId);
+      setIsNewUser(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const cost = calculateTotalCost(bookedTables);
+    setTotalCost(cost);
+  }, [bookedTables]);
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <div className=" bg-white min-h-screen flex justify-center items-center">
+      <div className="container">
+        <div className="bg-[#D9D9D9] rounded-[12px] py-10 text-center">
+          <h1 className="text-2xl text-black font-semibold italic">
+            Table Management (Floor 1)
+          </h1>
+        </div>
+
+        <div className="flex gap-2 pt-1 md:flex-row flex-col">
+          <div className="bg-[#91F4E885] md:w-[70%] h-fit">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {tables.map((table) => (
+                <Table
+                  key={table.id}
+                  tableData={table}
+                  onSelect={() => handleSelectTable(table)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="md:w-[30%] md:px-0 px-3 text-black relative flex justify-between flex-col">
+            <div>
+              <div className="bg-[#D9D9D9] rounded-[12px] py-6 text-center">
+                <h1 className="text-2xl text-black font-semibold italic">
+                  Table Details
+                </h1>
+              </div>
+
+              {bookedTables.length === 0 ? (
+                <div className="text-center mt-5">
+                  Select a table to view details
+                </div>
+              ) : (
+                bookedTables?.map((table) => (
+                  <>
+                    <h3 className="font-semibold italic mt-3 text-lg">
+                      Table - {table.number} (floor - 1)
+                    </h3>
+
+                    <div className="flex font-semibold mt-3 gap-2 italic">
+                      <span className="min-w-[50%]">Capacity:</span>
+                      <span className="">{table.number} Persons</span>
+                    </div>
+                    <div className="flex font-semibold mt-1 gap-2 italic">
+                      <span className="min-w-[50%]">Additional Charges:</span>
+                      <span className="">${table.charges}</span>
+                    </div>
+                    <div className="flex font-semibold mt-1 gap-2 italic">
+                      <span className="min-w-[50%]">Specialty:</span>
+                      <span className="">{table.speciality || "None"}</span>
+                    </div>
+                    <hr className="mt-3 border-black" />
+                  </>
+                ))
+              )}
+
+              <button
+                className="bg-[#20EB71] rounded-[12px] w-full mt-3 font-semibold h-[45px]"
+                onClick={handleBooking}
+              >
+                Select Tables
+              </button>
+
+              {isNewUser && (
+                <>
+                  <div className="flex my-3 justify-between">
+                    <span>Subtotal:</span>
+                    <span className="font-semibold italic">${totalCost}</span>
+                  </div>
+                  <div className="flex my-3 justify-between">
+                    <span>New User discount:</span>
+                    <span className="font-semibold italic">
+                      10% (${totalCost * 0.1})
+                    </span>
+                  </div>
+                </>
+              )}
+
+              <div className="flex my-3 justify-between">
+                <span>Total cost</span>
+                <span className="font-semibold italic">
+                  ${!isNewUser ? totalCost : totalCost * 0.9}
+                </span>
+              </div>
+            </div>
+
+            <div className="my-5">
+              <span>* A table cost $100</span>
+              <div className="flex gap-2 px-2 mt-3">
+                <div className="bg-[#D9D9D9] h-[20px] w-[20px]" />{" "}
+                <span>Booked</span>
+              </div>
+
+              <div className="flex gap-2 px-2">
+                <div className="bg-[#fff] h-[20px] w-[20px]" />{" "}
+                <span>Vacant</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </div>
   );
-}
+};
+
+export default IndexPage;
